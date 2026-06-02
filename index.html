@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>MAP ODP TELKOM</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+
+body{
+margin:0;
+font-family:Segoe UI,sans-serif;
+background:#f4f6f9;
+}
+
+.header{
+background:#005AAA;
+color:white;
+padding:15px;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+}
+
+.dashboard{
+display:flex;
+gap:10px;
+padding:10px;
+flex-wrap:wrap;
+}
+
+.card{
+flex:1;
+min-width:180px;
+background:white;
+padding:15px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+text-align:center;
+}
+
+.card h2{
+margin:0;
+color:#005AAA;
+}
+
+.toolbar{
+display:flex;
+gap:10px;
+padding:10px;
+flex-wrap:wrap;
+background:white;
+box-shadow:0 2px 5px rgba(0,0,0,.1);
+}
+
+input{
+padding:10px;
+border:1px solid #ccc;
+border-radius:5px;
+min-width:180px;
+}
+
+button{
+padding:10px 15px;
+background:#005AAA;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#004080;
+}
+
+#map{
+height:75vh;
+margin:10px;
+border-radius:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+📍 MAP ODP TELKOM
+</div>
+
+<div class="dashboard">
+
+<div class="card">
+<h2 id="totalODP">0</h2>
+Total ODP
+</div>
+
+<div class="card">
+<h2 id="tersedia">0</h2>
+🟢 Tersedia
+</div>
+
+<div class="card">
+<h2 id="hampirPenuh">0</h2>
+🟠 Hampir Penuh
+</div>
+
+<div class="card">
+<h2 id="penuh">0</h2>
+🔴 Penuh
+</div>
+
+</div>
+
+<div class="toolbar">
+
+<input
+type="text"
+id="searchODP"
+placeholder="Cari Nama ODP">
+
+<button onclick="cariODP()">
+Cari ODP
+</button>
+
+<input
+type="text"
+id="searchAlamat"
+placeholder="Cari Alamat">
+
+<button onclick="cariAlamat()">
+Cari Alamat
+</button>
+
+<input
+type="text"
+id="lat"
+placeholder="Latitude">
+
+<input
+type="text"
+id="lng"
+placeholder="Longitude">
+
+<button onclick="cariTikor()">
+Cari Tikor
+</button>
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+// ===========================
+// GOOGLE SHEET
+// ===========================
+
+const spreadsheetId =
+"1kJzf_3tzt_8_1nKOqCyBj6PgjonyCxiGmmL-nn8xnnM";
+
+const sheetName =
+encodeURIComponent("DATA ODP");
+
+const url =
+`https://opensheet.elk.sh/${spreadsheetId}/${sheetName}`;
+
+// ===========================
+// MAP
+// ===========================
+
+var map = L.map('map').setView(
+[-7.63,111.52],
+9
+);
+
+// OpenStreetMap
+
+var osm = L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19
+}
+);
+
+// Satellite
+
+var satellite = L.tileLayer(
+'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+{
+maxZoom:20
+}
+);
+
+// Hybrid
+
+var hybrid = L.tileLayer(
+'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+{
+maxZoom:20
+}
+);
+
+hybrid.addTo(map);
+
+var baseMaps = {
+"🗺️ Peta Biasa": osm,
+"🛰️ Satellite": satellite,
+"🌍 Hybrid": hybrid
+};
+
+L.control.layers(
+baseMaps,
+null,
+{
+position:'topright'
+}
+).addTo(map);
+
+// ===========================
+// LOAD DATA
+// ===========================
+
+let markers=[];
+
+fetch(url)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+let tersedia=0;
+let hampirPenuh=0;
+let penuh=0;
+
+document.getElementById("totalODP")
+.innerHTML=data.length;
+
+data.forEach(row=>{
+
+const lat =
+parseFloat(row["LATITUDE"]);
+
+const lng =
+parseFloat(row["LONGITUDE"]);
+
+if(isNaN(lat)||isNaN(lng))
+return;
+
+let avai =
+parseInt(row["AVAI"]||0);
+
+let color="green";
+
+if(avai===0){
+
+color="red";
+penuh++;
+
+}
+else if(avai<=5){
+
+color="orange";
+hampirPenuh++;
+
+}
+else{
+
+color="green";
+tersedia++;
+
+}
+
+let marker =
+L.circleMarker(
+[lat,lng],
+{
+radius:7,
+color:color,
+fillColor:color,
+fillOpacity:0.8
+}
+)
+.addTo(map);
+
+marker.odpName =
+String(
+row["ODP NAME"] || ""
+).toUpperCase();
+
+marker.bindPopup(`
+<h3>${row["ODP NAME"] || "-"}</h3>
+
+<b>Available :</b>
+${row["AVAI"] || 0}<br>
+
+<b>Used :</b>
+${row["USED"] || 0}<br>
+
+<b>Total :</b>
+${row["IS TOTAL"] || 0}<br>
+
+<b>Latitude :</b>
+${lat}<br>
+
+<b>Longitude :</b>
+${lng}
+`);
+
+markers.push(marker);
+
+});
+
+document.getElementById("tersedia")
+.innerHTML=tersedia;
+
+document.getElementById("hampirPenuh")
+.innerHTML=hampirPenuh;
+
+document.getElementById("penuh")
+.innerHTML=penuh;
+
+if(markers.length>0){
+
+let group =
+new L.featureGroup(markers);
+
+map.fitBounds(
+group.getBounds()
+);
+
+}
+
+})
+
+.catch(error=>{
+
+console.error(error);
+
+alert(
+"Gagal membaca Spreadsheet"
+);
+
+});
+
+// ===========================
+// SEARCH ODP
+// ===========================
+
+function cariODP(){
+
+let keyword =
+document
+.getElementById("searchODP")
+.value
+.toUpperCase();
+
+let ditemukan=false;
+
+markers.forEach(marker=>{
+
+if(
+marker.odpName.includes(keyword)
+){
+
+map.setView(
+marker.getLatLng(),
+18
+);
+
+marker.openPopup();
+
+ditemukan=true;
+
+}
+
+});
+
+if(!ditemukan){
+
+alert("ODP tidak ditemukan");
+
+}
+
+}
+
+// ===========================
+// SEARCH ALAMAT
+// ===========================
+
+async function cariAlamat(){
+
+let alamat =
+document
+.getElementById("searchAlamat")
+.value;
+
+if(!alamat)
+return;
+
+const response =
+await fetch(
+`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamat)}`
+);
+
+const data =
+await response.json();
+
+if(data.length>0){
+
+const lat =
+parseFloat(data[0].lat);
+
+const lon =
+parseFloat(data[0].lon);
+
+map.setView(
+[lat,lon],
+18
+);
+
+L.marker([lat,lon])
+.addTo(map)
+.bindPopup(
+data[0].display_name
+)
+.openPopup();
+
+}else{
+
+alert(
+"Alamat tidak ditemukan"
+);
+
+}
+
+}
+
+// ===========================
+// SEARCH TIKOR
+// ===========================
+
+function cariTikor(){
+
+let lat =
+parseFloat(
+document.getElementById("lat").value
+);
+
+let lng =
+parseFloat(
+document.getElementById("lng").value
+);
+
+if(
+isNaN(lat) ||
+isNaN(lng)
+){
+
+alert(
+"Isi Latitude dan Longitude"
+);
+
+return;
+
+}
+
+map.setView(
+[lat,lng],
+18
+);
+
+L.marker(
+[lat,lng]
+)
+.addTo(map)
+.bindPopup(
+"Lokasi Pencarian"
+)
+.openPopup();
+
+}
+
+</script>
+
+</body>
+</html>
