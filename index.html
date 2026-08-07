@@ -229,30 +229,6 @@ position:'topright'
 // LOAD DATA
 // ===========================
 
-let markers=[];
-  
-   // ===========================
-// UKUR JARAK
-// ===========================
-
-let titikAwal = null;
-let markerAwal = null;
-let markerAkhir = null;
-let garisJarak = null;
-
-function resetJarak(){
-
-    if(markerAwal) map.removeLayer(markerAwal);
-    if(markerAkhir) map.removeLayer(markerAkhir);
-    if(garisJarak) map.removeLayer(garisJarak);
-
-    titikAwal = null;
-    markerAwal = null;
-    markerAkhir = null;
-    garisJarak = null;
-
-}
-
 fetch(url)
 
 .then(res=>res.json())
