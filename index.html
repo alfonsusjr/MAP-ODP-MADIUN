@@ -150,6 +150,10 @@ placeholder="Longitude">
 Cari Tikor
 </button>
 
+<button onclick="resetJarak()">
+Reset Jarak
+</button>
+  
 </div>
 
 <div id="map"></div>
@@ -228,7 +232,36 @@ position:'topright'
 // ===========================
 // LOAD DATA
 // ===========================
+let markers=[];
+  // ===========================
+// UKUR JARAK
+// ===========================
 
+let titikAwal = null;
+let markerAwal = null;
+let markerAkhir = null;
+let garisJarak = null;
+
+function resetJarak(){
+
+    if(markerAwal){
+        map.removeLayer(markerAwal);
+    }
+
+    if(markerAkhir){
+        map.removeLayer(markerAkhir);
+    }
+
+    if(garisJarak){
+        map.removeLayer(garisJarak);
+    }
+
+    titikAwal = null;
+    markerAwal = null;
+    markerAkhir = null;
+    garisJarak = null;
+
+}
 fetch(url)
 
 .then(res=>res.json())
@@ -486,6 +519,61 @@ L.marker(
 .openPopup();
 
 }
+  // ===========================
+// UKUR JARAK DENGAN KLIK MAP
+// ===========================
+
+map.on("click", function(e){
+
+    if(titikAwal == null){
+
+        titikAwal = e.latlng;
+
+        markerAwal = L.marker(titikAwal)
+            .addTo(map)
+            .bindPopup("Titik Awal")
+            .openPopup();
+
+    }else{
+
+        let titikAkhir = e.latlng;
+
+        markerAkhir = L.marker(titikAkhir)
+            .addTo(map)
+            .bindPopup("Titik Tujuan")
+            .openPopup();
+
+        garisJarak = L.polyline(
+            [titikAwal, titikAkhir],
+            {
+                color:"blue",
+                weight:4
+            }
+        ).addTo(map);
+
+        let jarak = titikAwal.distanceTo(titikAkhir);
+
+        let tengah = L.latLng(
+            (titikAwal.lat + titikAkhir.lat)/2,
+            (titikAwal.lng + titikAkhir.lng)/2
+        );
+
+        L.popup()
+            .setLatLng(tengah)
+            .setContent(
+                "<b>Jarak :</b><br>" +
+                jarak.toFixed(2) +
+                " Meter<br>" +
+                (jarak/1000).toFixed(3) +
+                " Km"
+            )
+            .openOn(map);
+
+        titikAwal = null;
+
+    }
+
+});
 
 </script>
 
